@@ -339,13 +339,27 @@ function queueTerrainElevation(latlng, key) {
 }
 
 async function fetchTerrainElevation(latlng) {
-  const url = `https://api.opentopodata.org/v1/srtm30m?locations=${latlng.lat.toFixed(6)},${latlng.lng.toFixed(6)}`;
-  const response = await fetch(url, { cache: "force-cache" });
-  if (!response.ok) return null;
+  const locations = `${latlng.lat.toFixed(6)},${latlng.lng.toFixed(6)}`;
+  const providers = [
+    `https://api.opentopodata.org/v1/eudem25m?locations=${locations}`,
+    `https://api.opentopodata.org/v1/srtm30m?locations=${locations}`,
+    `https://api.open-meteo.com/v1/elevation?latitude=${latlng.lat.toFixed(6)}&longitude=${latlng.lng.toFixed(6)}`
+  ];
 
-  const data = await response.json();
-  const elevation = data?.results?.[0]?.elevation;
-  return Number.isFinite(Number(elevation)) ? Number(elevation) : null;
+  for (const url of providers) {
+    try {
+      const response = await fetch(url, { cache: "force-cache" });
+      if (!response.ok) continue;
+
+      const data = await response.json();
+      const elevation = data?.results?.[0]?.elevation ?? data?.elevation?.[0];
+      if (Number.isFinite(Number(elevation))) return Number(elevation);
+    } catch {
+      // Bir DEM servisi cevap vermezse digerine gec.
+    }
+  }
+
+  return null;
 }
 
 function fillStats(counts) {
