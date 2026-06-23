@@ -330,7 +330,7 @@ function updateCoordinateHud(latlng) {
   const terrainZ = terrainCache.get(terrainKey);
   const z = kmlZ !== "-" ? kmlZ : terrainZ ?? "...";
 
-  coordHud.textContent = `Enlem: ${latlng.lat.toFixed(7)} | Boylam: ${latlng.lng.toFixed(7)} | Z: ${z}`;
+  coordHud.textContent = formatCoordinateHud(latlng, z);
 
   if (kmlZ === "-" && terrainZ === undefined) {
     queueTerrainElevation(latlng, terrainKey);
@@ -453,6 +453,14 @@ function formatCoordinate(value) {
 function formatElevation(value) {
   if (value === "" || value === undefined || Number.isNaN(Number(value))) return "";
   return String(Math.round(Number(value)));
+}
+
+function formatCoordinateHud(latlng, z) {
+  if (window.matchMedia("(max-width: 640px)").matches) {
+    return `E: ${latlng.lat.toFixed(5)} | B: ${latlng.lng.toFixed(5)} | Z: ${z}`;
+  }
+
+  return `Enlem: ${latlng.lat.toFixed(7)} | Boylam: ${latlng.lng.toFixed(7)} | Z: ${z}`;
 }
 
 function setDetails(text) {
