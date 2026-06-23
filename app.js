@@ -28,6 +28,9 @@ const map = L.map("map", {
   preferCanvas: true
 }).setView([39.0, 35.2], 6);
 
+const canvasRenderer = L.canvas({ padding: 0.25 });
+const textLayer = L.layerGroup().addTo(map);
+
 L.control.zoom({ position: "topleft" }).addTo(map);
 
 const esriImagery = L.tileLayer(
@@ -138,22 +141,29 @@ function renderKml(kmlText, originalName, format) {
   }
 
   const geojson = toGeoJSON.kml(xml, { styles: true });
+  const featureTotal = geojson.features?.length ?? 0;
+  const liteMode = isLiteMode(featureTotal);
+  const rowLimit = liteMode ? 700 : 6000;
+  const elevationLimit = liteMode ? 2500 : 15000;
   const rows = [];
   const counts = { objects: 0, points: 0, lines: 0, polygons: 0 };
 
   currentLayer = L.geoJSON(geojson, {
-    pointToLayer: (feature, latlng) => makePoint(feature, latlng),
+    renderer: canvasRenderer,
+    pointToLayer: (feature, latlng) => makePoint(feature, latlng, liteMode),
     style: (feature) => styleFeature(feature),
     onEachFeature: (feature, layer) => {
       counts.objects += 1;
       countGeometry(feature.geometry, counts);
-      addRows(feature, rows);
+      addRows(feature, rows, rowLimit, elevationLimit);
 
       const title = cleanName(feature.properties?.name) || "Nesne";
       const description = cleanDescription(feature.properties?.description);
-      layer.bindPopup(`<strong>${escapeHtml(title)}</strong>${description ? `<br>${description}` : ""}`);
+      if (!liteMode || title !== "Nesne" || description) {
+        layer.bindPopup(`<strong>${escapeHtml(title)}</strong>${description ? `<br>${description}` : ""}`);
+      }
 
-      if (isRealTextFeature(feature)) {
+      if (!liteMode && isRealTextFeature(feature)) {
         const center = getFeatureCenter(feature);
         if (center) {
           L.marker(center, {
@@ -164,7 +174,7 @@ function renderKml(kmlText, originalName, format) {
               iconSize: [1, 1],
               iconAnchor: [0, 0]
             })
-          }).addTo(map);
+          }).addTo(textLayer);
         }
       }
     }
@@ -184,14 +194,38 @@ function renderKml(kmlText, originalName, format) {
     `Nokta    : ${counts.points}`,
     `Cizgi    : ${counts.lines}`,
     `Poligon  : ${counts.polygons}`,
+    liteMode ? `Mobil hizli mod: koordinat listesi ilk ${rowLimit} satirla sinirlandi, harita canvas ile hafif cizildi.` : "",
     "",
     "Not: Google Earth KML/KMZ verileri web haritasina donusturulur. 3D model, gx track, tour ve bazi Google Earth ozel efektleri tarayici haritasinda sinirli olabilir."
   ].join("\n"));
 }
 
-function makePoint(feature, latlng) {
+function isLiteMode(featureCount) {
+  return window.matchMedia("(max-width: 768px), (pointer: coarse)").matches || featureCount > 3500;
+}
+
+function makePoint(feature, latlng, liteMode = false) {
   const title = cleanName(feature.properties?.name);
   const z = getFirstElevation(feature);
+  if (liteMode) {
+    const point = L.circleMarker(latlng, {
+      renderer: canvasRenderer,
+      radius: 4,
+      color: styleColor(feature, "#f6c744"),
+      weight: 2,
+      opacity: 0.95,
+      fillColor: styleColor(feature, "#f6c744"),
+      fillOpacity: 0.85
+    });
+    if (title || z !== "") {
+      return point.bindTooltip(
+        `${escapeHtml(title || "Yer isareti")}${z === "" ? "" : ` | Z: ${formatElevation(z)}`}`,
+        { direction: "top", offset: [0, -10] }
+      );
+    }
+    return point;
+  }
+
   const iconUrl = feature.properties?.icon || feature.properties?.iconUrl || feature.properties?.iconHref;
   const marker = L.marker(latlng, {
     icon: iconUrl ? makeKmlIcon(iconUrl) : makeSc23Icon(title)
@@ -250,17 +284,18 @@ function countGeometry(geometry, counts) {
   if (geometry.type.includes("Polygon")) counts.polygons += 1;
 }
 
-function addRows(feature, rows) {
+function addRows(feature, rows, rowLimit, elevationLimit) {
   const name = cleanName(feature.properties?.name) || "Nesne";
   const type = feature.geometry?.type || "Bilinmiyor";
-  flattenCoordinates(feature.geometry?.coordinates).slice(0, 3000).forEach((coord) => {
+  for (const coord of flattenCoordinates(feature.geometry?.coordinates)) {
     if (coord[2] !== undefined && coord[2] !== null && coord[2] !== "") {
-      elevationPoints.push({
+      if (elevationPoints.length < elevationLimit) elevationPoints.push({
         lat: Number(coord[1]),
         lon: Number(coord[0]),
         z: Number(coord[2])
       });
     }
+    if (rows.length >= rowLimit) continue;
     rows.push({
       name,
       type,
@@ -268,7 +303,7 @@ function addRows(feature, rows) {
       lat: coord[1],
       z: coord[2] ?? ""
     });
-  });
+  }
 }
 
 function flattenCoordinates(coords) {
@@ -472,6 +507,7 @@ function resetMap(resetFile = true) {
     currentLayer.remove();
     currentLayer = null;
   }
+  textLayer.clearLayers();
   elevationPoints = [];
   coordRows.innerHTML = "";
   fillStats({ objects: 0, points: 0, lines: 0, polygons: 0 });
