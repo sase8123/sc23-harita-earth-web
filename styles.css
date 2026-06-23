@@ -517,10 +517,17 @@ pre {
   }
 
   #coordHud {
-    left: 20px;
-    right: 20px;
-    bottom: 20px;
-    text-align: center;
+    left: 14px;
+    right: auto;
+    bottom: 14px;
+    max-width: calc(100% - 92px);
+    padding: 7px 9px;
+    font-size: 10px;
+    line-height: 1.25;
+    text-align: left;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .stats {
