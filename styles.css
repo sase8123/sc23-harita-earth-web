@@ -405,3 +405,65 @@ pre {
     min-height: 720px;
   }
 }
+
+@media (max-width: 640px) {
+  .app-shell {
+    gap: 12px;
+    padding: 10px;
+  }
+
+  .topbar {
+    min-height: 0;
+    gap: 12px;
+    padding: 12px;
+  }
+
+  .brand {
+    gap: 10px;
+  }
+
+  .brand-mark {
+    width: 46px;
+    height: 46px;
+    border-width: 2px;
+    font-size: 11px;
+  }
+
+  h1 {
+    font-size: 23px;
+  }
+
+  .brand p {
+    font-size: 12px;
+    margin-top: 4px;
+  }
+
+  .actions {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+    width: 100%;
+  }
+
+  .button {
+    min-width: 0;
+    width: 100%;
+    height: 36px;
+    padding: 0 6px;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+
+  .map-panel {
+    height: 64vh;
+    padding: 10px;
+  }
+
+  .panel-title {
+    font-size: 16px;
+  }
+
+  .stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

@@ -27,9 +27,9 @@ L.control.zoom({ position: "topleft" }).addTo(map);
 const esriImagery = L.tileLayer(
   "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
   {
-    maxNativeZoom: 18,
-    maxZoom: 22,
-    detectRetina: true,
+    maxNativeZoom: 17,
+    maxZoom: 21,
+    detectRetina: false,
     attribution: "Tiles &copy; Esri"
   }
 ).addTo(map);
