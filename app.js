@@ -27,13 +27,16 @@ L.control.zoom({ position: "topleft" }).addTo(map);
 const esriImagery = L.tileLayer(
   "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
   {
-    maxZoom: 19,
+    maxNativeZoom: 18,
+    maxZoom: 22,
+    detectRetina: true,
     attribution: "Tiles &copy; Esri"
   }
 ).addTo(map);
 
 const osm = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-  maxZoom: 19,
+  maxNativeZoom: 19,
+  maxZoom: 22,
   attribution: "&copy; OpenStreetMap"
 });
 
