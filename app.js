@@ -197,7 +197,7 @@ function makePoint(feature, latlng) {
     icon: iconUrl ? makeKmlIcon(iconUrl) : makeSc23Icon(title)
   });
   return marker.bindTooltip(
-    `${escapeHtml(title || "Yer işareti")}${z === "" ? "" : ` | Z: ${formatNumber(z)}`}`,
+    `${escapeHtml(title || "Yer işareti")}${z === "" ? "" : ` | Z: ${formatElevation(z)}`}`,
     { direction: "top", offset: [0, -34] }
   );
 }
@@ -307,7 +307,7 @@ function findNearestElevation(latlng) {
     }
   }
 
-  return best && bestDistance <= limitMeters ? formatNumber(best.z) : "-";
+  return best && bestDistance <= limitMeters ? formatElevation(best.z) : "-";
 }
 
 function usesCenterTarget() {
@@ -348,7 +348,7 @@ function queueTerrainElevation(latlng, key) {
 
     try {
       const z = await fetchTerrainElevation(latlng);
-      terrainCache.set(key, z === null ? "-" : formatNumber(z));
+      terrainCache.set(key, z === null ? "-" : formatElevation(z));
     } catch {
       terrainCache.set(key, "-");
     }
@@ -399,9 +399,9 @@ function fillRows(rows) {
     tr.innerHTML = `
       <td title="${escapeHtml(row.name)}">${escapeHtml(row.name)}</td>
       <td>${escapeHtml(row.type)}</td>
-      <td>${formatNumber(row.lat)}</td>
-      <td>${formatNumber(row.lon)}</td>
-      <td>${row.z === "" ? "" : formatNumber(row.z)}</td>
+      <td>${formatCoordinate(row.lat)}</td>
+      <td>${formatCoordinate(row.lon)}</td>
+      <td>${row.z === "" ? "" : formatElevation(row.z)}</td>
     `;
     fragment.appendChild(tr);
   });
@@ -444,6 +444,15 @@ function cleanDescription(value) {
 function formatNumber(value) {
   if (value === "" || value === undefined || Number.isNaN(Number(value))) return "";
   return Number(value).toFixed(7);
+}
+
+function formatCoordinate(value) {
+  return formatNumber(value);
+}
+
+function formatElevation(value) {
+  if (value === "" || value === undefined || Number.isNaN(Number(value))) return "";
+  return String(Math.round(Number(value)));
 }
 
 function setDetails(text) {
