@@ -175,13 +175,33 @@ function renderKml(kmlText, originalName, format) {
 
 function makePoint(feature, latlng) {
   const title = cleanName(feature.properties?.name);
-  return L.circleMarker(latlng, {
-    radius: 6,
-    weight: 2,
-    color: styleColor(feature, "#f6c744"),
-    fillColor: styleColor(feature, "#f6c744"),
-    fillOpacity: 0.9
-  }).bindTooltip(title || "Nokta", { direction: "top" });
+  const iconUrl = feature.properties?.icon || feature.properties?.iconUrl || feature.properties?.iconHref;
+  const marker = L.marker(latlng, {
+    icon: iconUrl ? makeKmlIcon(iconUrl) : makeSc23Icon(title)
+  });
+  return marker.bindTooltip(title || "Yer işareti", { direction: "top", offset: [0, -34] });
+}
+
+function makeKmlIcon(iconUrl) {
+  return L.icon({
+    iconUrl,
+    iconSize: [32, 32],
+    iconAnchor: [16, 32],
+    popupAnchor: [0, -30],
+    tooltipAnchor: [0, -30]
+  });
+}
+
+function makeSc23Icon(title) {
+  const label = title ? `<span class="sc23-pin-label">${escapeHtml(title)}</span>` : "";
+  return L.divIcon({
+    className: "",
+    html: `<span class="sc23-pin"><span class="sc23-pin-body"></span>${label}</span>`,
+    iconSize: [34, 42],
+    iconAnchor: [17, 42],
+    popupAnchor: [0, -40],
+    tooltipAnchor: [0, -38]
+  });
 }
 
 function styleFeature(feature) {
