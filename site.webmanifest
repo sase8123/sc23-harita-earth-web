@@ -1,0 +1,16 @@
+{
+  "name": "SC23 Harita Earth",
+  "short_name": "SC23 Earth",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#06101a",
+  "theme_color": "#07111d",
+  "icons": [
+    {
+      "src": "sc23-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

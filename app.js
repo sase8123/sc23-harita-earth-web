@@ -16,6 +16,10 @@ const stats = {
 
 let currentKmlText = "";
 let currentLayer = null;
+let elevationPoints = [];
+let lastMouseLatLng = null;
+let terrainTimer = null;
+const terrainCache = new Map();
 
 const map = L.map("map", {
   zoomControl: false,
@@ -47,7 +51,8 @@ L.control.layers(
 ).addTo(map);
 
 map.on("mousemove", (event) => {
-  coordHud.textContent = `Enlem: ${event.latlng.lat.toFixed(7)} | Boylam: ${event.latlng.lng.toFixed(7)} | Z: -`;
+  lastMouseLatLng = event.latlng;
+  updateCoordinateHud(event.latlng);
 });
 
 fileInput.addEventListener("change", async () => {
@@ -116,6 +121,7 @@ async function readKmz(file) {
 
 function renderKml(kmlText, originalName, format) {
   resetMap(false);
+  elevationPoints = [];
 
   const parser = new DOMParser();
   const xml = parser.parseFromString(kmlText, "application/xml");
@@ -178,11 +184,15 @@ function renderKml(kmlText, originalName, format) {
 
 function makePoint(feature, latlng) {
   const title = cleanName(feature.properties?.name);
+  const z = getFirstElevation(feature);
   const iconUrl = feature.properties?.icon || feature.properties?.iconUrl || feature.properties?.iconHref;
   const marker = L.marker(latlng, {
     icon: iconUrl ? makeKmlIcon(iconUrl) : makeSc23Icon(title)
   });
-  return marker.bindTooltip(title || "Yer işareti", { direction: "top", offset: [0, -34] });
+  return marker.bindTooltip(
+    `${escapeHtml(title || "Yer işareti")}${z === "" ? "" : ` | Z: ${formatNumber(z)}`}`,
+    { direction: "top", offset: [0, -34] }
+  );
 }
 
 function makeKmlIcon(iconUrl) {
@@ -237,6 +247,13 @@ function addRows(feature, rows) {
   const name = cleanName(feature.properties?.name) || "Nesne";
   const type = feature.geometry?.type || "Bilinmiyor";
   flattenCoordinates(feature.geometry?.coordinates).slice(0, 3000).forEach((coord) => {
+    if (coord[2] !== undefined && coord[2] !== null && coord[2] !== "") {
+      elevationPoints.push({
+        lat: Number(coord[1]),
+        lon: Number(coord[0]),
+        z: Number(coord[2])
+      });
+    }
     rows.push({
       name,
       type,
@@ -251,6 +268,84 @@ function flattenCoordinates(coords) {
   if (!Array.isArray(coords)) return [];
   if (typeof coords[0] === "number") return [coords];
   return coords.flatMap(flattenCoordinates);
+}
+
+function getFirstElevation(feature) {
+  const coord = flattenCoordinates(feature.geometry?.coordinates)
+    .find((item) => item[2] !== undefined && item[2] !== null && item[2] !== "");
+  return coord ? coord[2] : "";
+}
+
+function findNearestElevation(latlng) {
+  if (!elevationPoints.length) return "-";
+
+  const zoom = map.getZoom();
+  const limitMeters = zoom >= 19 ? 8
+    : zoom >= 18 ? 18
+    : zoom >= 17 ? 40
+    : zoom >= 16 ? 90
+    : zoom >= 15 ? 180
+    : zoom >= 14 ? 350
+    : 800;
+
+  let best = null;
+  let bestDistance = Number.POSITIVE_INFINITY;
+
+  for (const point of elevationPoints) {
+    if (!Number.isFinite(point.lat) || !Number.isFinite(point.lon) || !Number.isFinite(point.z)) continue;
+    const distance = map.distance(latlng, L.latLng(point.lat, point.lon));
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      best = point;
+    }
+  }
+
+  return best && bestDistance <= limitMeters ? formatNumber(best.z) : "-";
+}
+
+function updateCoordinateHud(latlng) {
+  const kmlZ = findNearestElevation(latlng);
+  const terrainKey = makeTerrainKey(latlng);
+  const terrainZ = terrainCache.get(terrainKey);
+  const z = kmlZ !== "-" ? kmlZ : terrainZ ?? "...";
+
+  coordHud.textContent = `Enlem: ${latlng.lat.toFixed(7)} | Boylam: ${latlng.lng.toFixed(7)} | Z: ${z}`;
+
+  if (kmlZ === "-" && terrainZ === undefined) {
+    queueTerrainElevation(latlng, terrainKey);
+  }
+}
+
+function makeTerrainKey(latlng) {
+  return `${latlng.lat.toFixed(5)},${latlng.lng.toFixed(5)}`;
+}
+
+function queueTerrainElevation(latlng, key) {
+  clearTimeout(terrainTimer);
+  terrainTimer = setTimeout(async () => {
+    if (terrainCache.has(key)) return;
+
+    try {
+      const z = await fetchTerrainElevation(latlng);
+      terrainCache.set(key, z === null ? "-" : formatNumber(z));
+    } catch {
+      terrainCache.set(key, "-");
+    }
+
+    if (lastMouseLatLng && makeTerrainKey(lastMouseLatLng) === key) {
+      updateCoordinateHud(lastMouseLatLng);
+    }
+  }, 450);
+}
+
+async function fetchTerrainElevation(latlng) {
+  const url = `https://api.opentopodata.org/v1/srtm30m?locations=${latlng.lat.toFixed(6)},${latlng.lng.toFixed(6)}`;
+  const response = await fetch(url, { cache: "force-cache" });
+  if (!response.ok) return null;
+
+  const data = await response.json();
+  const elevation = data?.results?.[0]?.elevation;
+  return Number.isFinite(Number(elevation)) ? Number(elevation) : null;
 }
 
 function fillStats(counts) {
@@ -325,8 +420,11 @@ function resetMap(resetFile = true) {
     currentLayer.remove();
     currentLayer = null;
   }
+  elevationPoints = [];
   coordRows.innerHTML = "";
   fillStats({ objects: 0, points: 0, lines: 0, polygons: 0 });
+  lastMouseLatLng = null;
+  clearTimeout(terrainTimer);
   coordHud.textContent = "Enlem: - | Boylam: - | Z: -";
   setDetails("Bir KML veya KMZ dosyasi acin.");
   if (resetFile) {
