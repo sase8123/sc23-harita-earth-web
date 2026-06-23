@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#07111d">
+  <title>SC23 Harita Earth</title>
+  <link rel="preconnect" href="https://unpkg.com">
+  <link rel="preconnect" href="https://server.arcgisonline.com">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="app-shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark">SC23</div>
+        <div>
+          <h1>SC23 Harita Earth</h1>
+          <p>KML ve KMZ dosyalarini webde uydu haritasi uzerinde ac.</p>
+        </div>
+      </div>
+      <div class="actions">
+        <label class="button primary">
+          Dosya Ac
+          <input id="fileInput" type="file" accept=".kml,.kmz" hidden>
+        </label>
+        <button id="saveKml" class="button secondary" type="button" disabled>KML Kaydet</button>
+        <button id="clearMap" class="button ghost" type="button">Temizle</button>
+      </div>
+    </header>
+
+    <section class="workspace">
+      <section class="map-panel">
+        <div class="panel-title">
+          <span>Uydu Haritasi</span>
+          <span id="fileName" class="muted">Dosya bekleniyor</span>
+        </div>
+        <div id="map"></div>
+        <div id="coordHud">Enlem: - | Boylam: - | Z: -</div>
+        <div id="dropZone" class="drop-zone">
+          <strong>KML / KMZ dosyanizi buraya birakin</strong>
+          <span>Google Earth verilerini webde hizli onizleme</span>
+        </div>
+      </section>
+
+      <aside class="side-panel">
+        <div class="stats">
+          <div class="stat"><span>Nesne</span><strong id="statObjects">0</strong></div>
+          <div class="stat"><span>Nokta</span><strong id="statPoints">0</strong></div>
+          <div class="stat"><span>Cizgi</span><strong id="statLines">0</strong></div>
+          <div class="stat"><span>Poligon</span><strong id="statPolygons">0</strong></div>
+        </div>
+
+        <section class="box coordinates-box">
+          <h2>Koordinat Listesi</h2>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Ad</th>
+                  <th>Tip</th>
+                  <th>Enlem</th>
+                  <th>Boylam</th>
+                  <th>Z</th>
+                </tr>
+              </thead>
+              <tbody id="coordRows"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="box">
+          <h2>Detaylar</h2>
+          <pre id="details">Bir KML veya KMZ dosyasi acin.</pre>
+        </section>
+      </aside>
+    </section>
+  </main>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/jszip@3.10.1/dist/jszip.min.js"></script>
+  <script src="https://unpkg.com/@tmcw/togeojson@5.8.1/dist/togeojson.umd.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
