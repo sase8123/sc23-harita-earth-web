@@ -1,0 +1,1 @@
+# sc23-harita-earth-web
