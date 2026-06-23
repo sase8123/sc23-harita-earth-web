@@ -6,6 +6,8 @@ const coordRows = document.getElementById("coordRows");
 const details = document.getElementById("details");
 const dropZone = document.getElementById("dropZone");
 const coordHud = document.getElementById("coordHud");
+const centerTarget = document.getElementById("centerTarget");
+const centerTargetMode = window.matchMedia("(pointer: coarse), (max-width: 900px)");
 
 const stats = {
   objects: document.getElementById("statObjects"),
@@ -51,9 +53,14 @@ L.control.layers(
 ).addTo(map);
 
 map.on("mousemove", (event) => {
+  if (usesCenterTarget()) return;
   lastMouseLatLng = event.latlng;
   updateCoordinateHud(event.latlng);
 });
+
+map.on("move zoom moveend zoomend", updateCenterCoordinateHud);
+centerTargetMode.addEventListener?.("change", updateCenterCoordinateHud);
+setTimeout(updateCenterCoordinateHud, 250);
 
 fileInput.addEventListener("change", async () => {
   if (fileInput.files?.[0]) {
@@ -301,6 +308,20 @@ function findNearestElevation(latlng) {
   }
 
   return best && bestDistance <= limitMeters ? formatNumber(best.z) : "-";
+}
+
+function usesCenterTarget() {
+  return centerTargetMode.matches;
+}
+
+function updateCenterCoordinateHud() {
+  if (centerTarget) {
+    centerTarget.hidden = !usesCenterTarget();
+  }
+
+  if (!usesCenterTarget()) return;
+  lastMouseLatLng = map.getCenter();
+  updateCoordinateHud(lastMouseLatLng);
 }
 
 function updateCoordinateHud(latlng) {

@@ -256,6 +256,45 @@ h1 {
   pointer-events: none;
 }
 
+.center-target {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 510;
+  width: 34px;
+  height: 46px;
+  display: none;
+  transform: translate(-50%, -100%);
+  pointer-events: none;
+  filter: drop-shadow(0 5px 8px rgba(0, 0, 0, 0.65));
+}
+
+.center-target::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 2px;
+  width: 28px;
+  height: 28px;
+  border: 3px solid var(--gold);
+  border-radius: 50% 50% 50% 6px;
+  background: linear-gradient(145deg, #06101a 0%, #0d2a3d 58%, #18ae7e 100%);
+  transform: translateX(-50%) rotate(-45deg);
+}
+
+.center-target::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 13px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--gold);
+  box-shadow: 0 0 0 3px rgba(246, 199, 68, 0.18);
+  transform: translateX(-50%);
+}
+
 .drop-zone {
   position: absolute;
   inset: 74px 34px 34px;
@@ -418,8 +457,8 @@ pre {
 
   .topbar {
     min-height: 0;
-    gap: 14px;
-    padding: 15px;
+    gap: 15px;
+    padding: 16px;
   }
 
   .brand {
@@ -427,17 +466,17 @@ pre {
   }
 
   .brand-mark {
-    width: 54px;
-    height: 54px;
+    width: 58px;
+    height: 58px;
   }
 
   .brand-mark img {
-    width: 54px;
-    height: 54px;
+    width: 58px;
+    height: 58px;
   }
 
   h1 {
-    font-size: 25px;
+    font-size: 26px;
   }
 
   .brand p {
@@ -455,7 +494,7 @@ pre {
   .button {
     min-width: 0;
     width: 100%;
-    height: 42px;
+    height: 44px;
     padding: 0 8px;
     font-size: 13px;
     white-space: nowrap;
@@ -468,6 +507,20 @@ pre {
 
   .panel-title {
     font-size: 16px;
+  }
+
+  .center-target {
+    width: 30px;
+    height: 42px;
+    top: calc(50% + 15px);
+    display: block;
+  }
+
+  #coordHud {
+    left: 20px;
+    right: 20px;
+    bottom: 20px;
+    text-align: center;
   }
 
   .stats {

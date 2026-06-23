@@ -5,21 +5,21 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#07111d">
   <title>SC23 Harita Earth</title>
-  <link rel="icon" href="app-icon.ico">
-  <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
-  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
-  <link rel="manifest" href="site.webmanifest">
+  <link rel="icon" href="app-icon.ico?v=7">
+  <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=7">
+  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=7">
+  <link rel="manifest" href="site.webmanifest?v=7">
   <link rel="preconnect" href="https://unpkg.com">
   <link rel="preconnect" href="https://server.arcgisonline.com">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=7">
 </head>
 <body>
   <main class="app-shell">
     <header class="topbar">
       <div class="brand">
         <div class="brand-mark" aria-label="SC23 Harita Earth logosu">
-          <img src="app-icon.ico" alt="">
+          <img src="icon-192.png" alt="">
         </div>
         <div>
           <h1>SC23 Harita Earth</h1>
@@ -42,6 +42,7 @@
           <span id="fileName" class="muted">Dosya bekleniyor</span>
         </div>
         <div id="map"></div>
+        <div id="centerTarget" class="center-target" aria-hidden="true"></div>
         <div id="coordHud">Enlem: - | Boylam: - | Z: -</div>
         <div id="dropZone" class="drop-zone">
           <strong>KML / KMZ dosyanizi buraya birakin</strong>
@@ -86,6 +87,6 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://unpkg.com/jszip@3.10.1/dist/jszip.min.js"></script>
   <script src="https://unpkg.com/@tmcw/togeojson@5.8.1/dist/togeojson.umd.js"></script>
-  <script src="app.js"></script>
+  <script src="app.js?v=7"></script>
 </body>
 </html>
