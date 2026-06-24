@@ -763,6 +763,10 @@ async function checkWebLicense(silent = false) {
     showLicenseOverlay("purchase", result.message || "Deneme veya lisans süresi sona erdi.");
   } catch (error) {
     console.error(error);
+    if (isUnauthorizedSessionError(error)) {
+      await signOutAndReset();
+      return;
+    }
     licenseState.allowed = false;
     licenseState.checking = false;
     setAppEnabled(false);
@@ -1099,6 +1103,14 @@ function getLicenseErrorMessage(error) {
   }
   if (message && !["()", "[]", "{}", "null", "undefined"].includes(message)) return message;
   return "İşlem tamamlanamadı. Lütfen bilgileri kontrol edip tekrar deneyin.";
+}
+
+function isUnauthorizedSessionError(error) {
+  const message = String(error?.message || error?.error_description || error?.msg || "").toLowerCase();
+  return message.includes("yetkisiz") ||
+    message.includes("unauthorized") ||
+    message.includes("jwt") ||
+    message.includes("token");
 }
 
 async function signOutAndReset() {
