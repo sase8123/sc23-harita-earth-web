@@ -1,3 +1,41 @@
+const LICENSE_CONFIG = {
+  supabaseUrl: "https://qlxrykywoiutncwfehvl.supabase.co",
+  publishableKey: "sb_publishable_fCUx7PUID8qh6K1ADA_cbg_cF83SHjC",
+  functionName: "hyper-service",
+  product: "SC23_HARITA_EARTH",
+  platform: "web",
+  clientKind: "browser",
+  appVersion: "5.0.0-web",
+  consentVersion: "2026-06-22"
+};
+
+const LICENSE_TERMS = [
+  "SC23 Harita Earth Web, KML ve KMZ dosyalarini uydu haritasi uzerinde goruntulemek icin lisansli olarak sunulur.",
+  "Yazilimin telif haklari SC23 Harita'ya aittir. Izinsiz cogaltma, dagitma veya tersine muhendislik yapilamaz.",
+  "Deneme suresi ilk web lisans kaydindan itibaren 30 gundur. Sure bitince dosya acma, haritada goruntuleme ve kaydetme ozellikleri kapatilir.",
+  "Lisans kontrolu icin oturum bilgisi, cihaz tanimlayici, tarayici bilgisi, IP ve konum bilgisi gibi teknik kayitlar saklanabilir."
+].join("\n\n");
+
+const licenseState = {
+  allowed: false,
+  checking: true,
+  deviceHash: "",
+  deviceSecret: "",
+  session: null
+};
+
+const supabaseClient = window.supabase?.createClient(
+  LICENSE_CONFIG.supabaseUrl,
+  LICENSE_CONFIG.publishableKey,
+  {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true
+    }
+  }
+);
+
 const fileInput = document.getElementById("fileInput");
 const saveKmlButton = document.getElementById("saveKml");
 const clearButton = document.getElementById("clearMap");
@@ -120,6 +158,10 @@ centerTargetMode.addEventListener?.("change", updateCenterCoordinateHud);
 setTimeout(updateCenterCoordinateHud, 250);
 
 fileInput.addEventListener("change", async () => {
+  if (!ensureLicenseAllowed()) {
+    fileInput.value = "";
+    return;
+  }
   if (fileInput.files?.[0]) {
     await openFile(fileInput.files[0]);
   }
@@ -149,11 +191,13 @@ clearButton.addEventListener("click", resetMap);
 
 window.addEventListener("drop", async (event) => {
   dropZone.classList.remove("visible");
+  if (!ensureLicenseAllowed()) return;
   const file = event.dataTransfer?.files?.[0];
   if (file) await openFile(file);
 });
 
 async function openFile(file) {
+  if (!ensureLicenseAllowed()) return;
   try {
     setDetails("Dosya okunuyor...");
     const ext = file.name.split(".").pop().toLowerCase();
@@ -597,4 +641,321 @@ function escapeHtml(value) {
     .replaceAll("'", "&#039;");
 }
 
+function ensureLicenseAllowed() {
+  if (licenseState.allowed) return true;
+  if (licenseState.checking) {
+    showLicenseOverlay("checking");
+    return false;
+  }
+  showLicenseOverlay("purchase");
+  return false;
+}
+
+async function initLicense() {
+  setAppEnabled(false);
+  showLicenseOverlay("checking");
+
+  if (!supabaseClient) {
+    licenseState.checking = false;
+    showLicenseOverlay("error", "Lisans sistemi yuklenemedi. Sayfayi yenileyin.");
+    return;
+  }
+
+  const { data } = await supabaseClient.auth.getSession();
+  licenseState.session = data?.session || null;
+
+  supabaseClient.auth.onAuthStateChange((_event, session) => {
+    licenseState.session = session;
+    if (session) checkWebLicense();
+  });
+
+  if (!licenseState.session) {
+    licenseState.checking = false;
+    showLicenseOverlay("login");
+    return;
+  }
+
+  await checkWebLicense();
+}
+
+async function checkWebLicense() {
+  try {
+    licenseState.checking = true;
+    setAppEnabled(false);
+    showLicenseOverlay("checking");
+
+    const identity = await getWebIdentity();
+    licenseState.deviceHash = identity.deviceHash;
+    licenseState.deviceSecret = localStorage.getItem(identity.secretKey) || "";
+
+    let result = await callLicenseService({
+      action: licenseState.deviceSecret ? "check" : "register",
+      deviceHash: identity.deviceHash,
+      deviceSecret: licenseState.deviceSecret,
+      installId: identity.installId
+    });
+
+    if (!result.allowed && result.status === "unauthorized") {
+      result = await callLicenseService({
+        action: "register",
+        deviceHash: identity.deviceHash,
+        installId: identity.installId
+      });
+    }
+
+    if (result.deviceSecret) {
+      licenseState.deviceSecret = result.deviceSecret;
+      localStorage.setItem(identity.secretKey, result.deviceSecret);
+    }
+
+    licenseState.allowed = result.allowed === true;
+    licenseState.checking = false;
+
+    if (licenseState.allowed) {
+      setAppEnabled(true);
+      hideLicenseOverlay();
+      if (!currentKmlText) {
+        setDetails(`${result.message || "Lisans aktif."}\n\nBir KML veya KMZ dosyasi acin.`);
+      }
+      return;
+    }
+
+    showLicenseOverlay("purchase", result.message || "Deneme veya lisans suresi sona erdi.");
+  } catch (error) {
+    console.error(error);
+    licenseState.allowed = false;
+    licenseState.checking = false;
+    showLicenseOverlay("error", error.message || "Lisans kontrolu yapilamadi.");
+  }
+}
+
+async function callLicenseService(extraPayload) {
+  const session = licenseState.session;
+  if (!session?.access_token) throw new Error("Lisans kontrolu icin giris yapin.");
+
+  const payload = {
+    product: LICENSE_CONFIG.product,
+    platform: LICENSE_CONFIG.platform,
+    clientKind: LICENSE_CONFIG.clientKind,
+    computerName: getWebComputerName(),
+    osVersion: navigator.userAgent,
+    architecture: navigator.userAgentData?.platform || navigator.platform || "web",
+    culture: navigator.language || "tr-TR",
+    timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || "",
+    appVersion: LICENSE_CONFIG.appVersion,
+    consentVersion: LICENSE_CONFIG.consentVersion,
+    consentHash: await sha256Text(LICENSE_TERMS),
+    consentText: LICENSE_TERMS,
+    ...extraPayload
+  };
+
+  const response = await fetch(`${LICENSE_CONFIG.supabaseUrl}/functions/v1/${LICENSE_CONFIG.functionName}`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      apikey: LICENSE_CONFIG.publishableKey,
+      authorization: `Bearer ${session.access_token}`
+    },
+    body: JSON.stringify(payload)
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.message || "Lisans servisi cevap vermedi.");
+  }
+  return data;
+}
+
+async function getWebIdentity() {
+  const user = licenseState.session?.user;
+  if (!user?.id) throw new Error("Oturum bulunamadi.");
+
+  const installIdKey = "sc23_web_install_id";
+  let installId = localStorage.getItem(installIdKey);
+  if (!installId) {
+    installId = crypto.randomUUID ? crypto.randomUUID() : String(Date.now());
+    localStorage.setItem(installIdKey, installId);
+  }
+
+  const deviceBasis = [
+    "SC23 Harita Earth Web",
+    user.id,
+    navigator.platform || "",
+    Intl.DateTimeFormat().resolvedOptions().timeZone || "",
+    `${screen.width}x${screen.height}`,
+    navigator.hardwareConcurrency || ""
+  ].join("|");
+  const deviceHash = await sha256Text(deviceBasis);
+  return {
+    installId,
+    deviceHash,
+    secretKey: `sc23_web_device_secret_${deviceHash.slice(0, 16)}`
+  };
+}
+
+function getWebComputerName() {
+  const email = licenseState.session?.user?.email || "Web kullanici";
+  const browser = detectBrowserName();
+  return `${browser} - ${email}`.slice(0, 128);
+}
+
+function detectBrowserName() {
+  const ua = navigator.userAgent;
+  if (ua.includes("Edg/")) return "Microsoft Edge";
+  if (ua.includes("Chrome/")) return "Google Chrome";
+  if (ua.includes("Firefox/")) return "Firefox";
+  if (ua.includes("Safari/")) return "Safari";
+  return "Web Tarayici";
+}
+
+async function sha256Text(value) {
+  const bytes = new TextEncoder().encode(value);
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return Array.from(new Uint8Array(digest))
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+function setAppEnabled(enabled) {
+  fileInput.disabled = !enabled;
+  clearButton.disabled = !enabled;
+  document.body.classList.toggle("license-locked", !enabled);
+  if (!enabled) saveKmlButton.disabled = true;
+}
+
+function getLicenseOverlay() {
+  let overlay = document.getElementById("licenseOverlay");
+  if (overlay) return overlay;
+
+  overlay = document.createElement("div");
+  overlay.id = "licenseOverlay";
+  overlay.className = "license-overlay";
+  document.body.appendChild(overlay);
+  overlay.addEventListener("submit", onLicenseSubmit);
+  overlay.addEventListener("click", (event) => {
+    if (event.target?.dataset?.licenseClose === "1") hideLicenseOverlay();
+  });
+  return overlay;
+}
+
+function showLicenseOverlay(mode, message = "") {
+  const overlay = getLicenseOverlay();
+  overlay.hidden = false;
+
+  if (mode === "checking") {
+    overlay.innerHTML = `
+      <section class="license-card compact">
+        <h2>Lisans kontrol ediliyor</h2>
+        <p>SC23 Harita Earth Web hesabi ve 30 gunluk deneme durumu kontrol ediliyor.</p>
+      </section>
+    `;
+    return;
+  }
+
+  if (mode === "login") {
+    overlay.innerHTML = `
+      <form class="license-card" data-license-form="login">
+        <h2>SC23 Harita Earth Web</h2>
+        <p>Devam etmek icin tek seferlik e-posta girisi yapin. Oturum bu tarayicida saklanir, her acilista tekrar sorulmaz.</p>
+        <label>
+          <span>E-posta</span>
+          <input name="email" type="email" autocomplete="email" required placeholder="ornek@mail.com">
+        </label>
+        <div class="license-terms">${escapeHtml(LICENSE_TERMS)}</div>
+        <button class="button secondary wide" type="submit">Giris Linki Gonder</button>
+        <p class="license-note">Giris linki gondererek lisans ve kullanim kosullarini kabul etmis olursunuz.</p>
+      </form>
+    `;
+    return;
+  }
+
+  if (mode === "purchase") {
+    const email = licenseState.session?.user?.email || "";
+    overlay.innerHTML = `
+      <form class="license-card" data-license-form="purchase">
+        <h2>Deneme Suresi Sona Erdi</h2>
+        <p>${escapeHtml(message || "Deneme veya lisans suresi sona erdi.")}</p>
+        <p class="machine-code">Makine kodu: ${escapeHtml((licenseState.deviceHash || "").slice(0, 16).toUpperCase() || "-")}</p>
+        <label>
+          <span>Ad Soyad</span>
+          <input name="name" type="text" autocomplete="name" required>
+        </label>
+        <label>
+          <span>E-posta</span>
+          <input name="email" type="email" autocomplete="email" required value="${escapeHtml(email)}">
+        </label>
+        <div class="plan-row">
+          <label><input type="radio" name="plan" value="monthly" checked> Aylik Lisans</label>
+          <label><input type="radio" name="plan" value="yearly"> Yillik Lisans</label>
+        </div>
+        <button class="button secondary wide" type="submit">Satin Alma Talebi Gonder</button>
+      </form>
+    `;
+    return;
+  }
+
+  overlay.innerHTML = `
+    <section class="license-card">
+      <h2>Lisans Kontrolu Yapilamadi</h2>
+      <p>${escapeHtml(message || "Beklenmeyen bir hata olustu.")}</p>
+      <button class="button secondary wide" type="button" onclick="location.reload()">Tekrar Dene</button>
+    </section>
+  `;
+}
+
+function hideLicenseOverlay() {
+  const overlay = document.getElementById("licenseOverlay");
+  if (overlay) overlay.hidden = true;
+}
+
+async function onLicenseSubmit(event) {
+  const form = event.target;
+  if (!(form instanceof HTMLFormElement)) return;
+  event.preventDefault();
+
+  const mode = form.dataset.licenseForm;
+  const button = form.querySelector("button[type='submit']");
+  if (button) button.disabled = true;
+
+  try {
+    if (mode === "login") {
+      const email = form.elements.email.value.trim();
+      const { error } = await supabaseClient.auth.signInWithOtp({
+        email,
+        options: { emailRedirectTo: `${location.origin}${location.pathname}` }
+      });
+      if (error) throw error;
+      form.innerHTML = `
+        <h2>Giris Linki Gonderildi</h2>
+        <p>E-postanizi kontrol edin. Linke tiklayinca SC23 Harita Earth Web otomatik acilacak ve lisans kaydi yapilacak.</p>
+      `;
+      return;
+    }
+
+    if (mode === "purchase") {
+      const formData = new FormData(form);
+      await callLicenseService({
+        action: "purchase",
+        deviceHash: licenseState.deviceHash,
+        deviceSecret: licenseState.deviceSecret,
+        customerName: String(formData.get("name") || "").trim(),
+        customerEmail: String(formData.get("email") || "").trim(),
+        requestedPlan: formData.get("plan") === "monthly" ? "monthly" : "yearly"
+      });
+      hideLicenseOverlay();
+      fileName.textContent = "Satin alma talebi gonderildi";
+      setDetails("Satin alma talebiniz gonderildi. Lisans aktiflestirilince sayfayi yenileyip kullanabilirsiniz.");
+    }
+  } catch (error) {
+    console.error(error);
+    const note = document.createElement("p");
+    note.className = "license-error";
+    note.textContent = error.message || "Islem tamamlanamadi.";
+    form.appendChild(note);
+  } finally {
+    if (button) button.disabled = false;
+  }
+}
+
 resetMap();
+initLicense();

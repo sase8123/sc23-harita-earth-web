@@ -127,6 +127,14 @@ h1 {
   cursor: not-allowed;
 }
 
+.license-locked .actions {
+  opacity: 0.7;
+}
+
+.license-locked .actions .button {
+  pointer-events: none;
+}
+
 .workspace {
   min-height: 0;
   display: grid;
@@ -415,6 +423,126 @@ pre {
   scrollbar-color: #24405b #06101a;
 }
 
+.license-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(3, 8, 14, 0.72);
+  backdrop-filter: blur(7px);
+}
+
+.license-overlay[hidden] {
+  display: none;
+}
+
+.license-card {
+  width: min(560px, 100%);
+  max-height: calc(100vh - 36px);
+  overflow: auto;
+  padding: 28px;
+  border: 1px solid rgba(246, 199, 68, 0.35);
+  border-radius: 10px;
+  background: linear-gradient(145deg, #06101a 0%, #0d2031 100%);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.48);
+}
+
+.license-card.compact {
+  width: min(430px, 100%);
+}
+
+.license-card h2 {
+  margin: 0 0 12px;
+  color: var(--gold);
+  font-size: 34px;
+  line-height: 1.08;
+}
+
+.license-card p {
+  margin: 0 0 16px;
+  color: #d8e8f8;
+  font-size: 16px;
+  line-height: 1.45;
+}
+
+.license-card label {
+  display: block;
+  margin: 14px 0;
+  color: #b8d0e8;
+  font-weight: 700;
+}
+
+.license-card label span {
+  display: block;
+  margin-bottom: 7px;
+}
+
+.license-card input[type="email"],
+.license-card input[type="text"] {
+  width: 100%;
+  height: 42px;
+  padding: 8px 10px;
+  border: 1px solid #425b73;
+  border-radius: 4px;
+  background: #081521;
+  color: white;
+  font: inherit;
+}
+
+.license-card input:focus {
+  outline: 2px solid rgba(246, 199, 68, 0.45);
+  border-color: var(--gold);
+}
+
+.license-terms {
+  max-height: 150px;
+  overflow: auto;
+  margin: 16px 0;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  background: rgba(3, 9, 15, 0.72);
+  color: #c8d9ec;
+  font-size: 13px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  scrollbar-color: #24405b #06101a;
+}
+
+.button.wide {
+  width: 100%;
+  margin-top: 8px;
+}
+
+.license-note,
+.license-card .machine-code {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.plan-row {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin: 16px 0;
+}
+
+.plan-row label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: white;
+}
+
+.license-error {
+  margin-top: 12px !important;
+  color: #ff9b9b !important;
+  font-weight: 700;
+}
+
 @media (max-width: 1100px) {
   body {
     overflow: auto;
@@ -532,5 +660,13 @@ pre {
 
   .stats {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .license-card {
+    padding: 20px;
+  }
+
+  .license-card h2 {
+    font-size: 27px;
   }
 }
