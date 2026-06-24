@@ -22,7 +22,9 @@ const licenseState = {
   checking: true,
   deviceHash: "",
   deviceSecret: "",
-  session: null
+  session: null,
+  status: "",
+  lastCheckedAt: 0
 };
 
 const supabaseClient = window.supabase?.createClient(
@@ -157,9 +159,15 @@ map.on("mousemove", (event) => {
 map.on("move zoom moveend zoomend", updateCenterCoordinateHud);
 centerTargetMode.addEventListener?.("change", updateCenterCoordinateHud);
 setTimeout(updateCenterCoordinateHud, 250);
+window.addEventListener("focus", () => {
+  if (licenseState.allowed) checkWebLicense(true);
+});
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden && licenseState.allowed) checkWebLicense(true);
+});
 
 fileInput.addEventListener("change", async () => {
-  if (!ensureLicenseAllowed()) {
+  if (!await ensureFreshLicenseAllowed()) {
     fileInput.value = "";
     return;
   }
@@ -192,13 +200,13 @@ clearButton.addEventListener("click", resetMap);
 
 window.addEventListener("drop", async (event) => {
   dropZone.classList.remove("visible");
-  if (!ensureLicenseAllowed()) return;
+  if (!await ensureFreshLicenseAllowed()) return;
   const file = event.dataTransfer?.files?.[0];
   if (file) await openFile(file);
 });
 
 async function openFile(file) {
-  if (!ensureLicenseAllowed()) return;
+  if (!await ensureFreshLicenseAllowed()) return;
   try {
     setDetails("Dosya okunuyor...");
     const ext = file.name.split(".").pop().toLowerCase();
@@ -652,6 +660,13 @@ function ensureLicenseAllowed() {
   return false;
 }
 
+async function ensureFreshLicenseAllowed() {
+  if (!licenseState.allowed) return ensureLicenseAllowed();
+  if (Date.now() - licenseState.lastCheckedAt < 30000) return true;
+  await checkWebLicense(true);
+  return ensureLicenseAllowed();
+}
+
 async function initLicense() {
   setAppEnabled(false);
   showLicenseOverlay("checking");
@@ -679,11 +694,13 @@ async function initLicense() {
   await checkWebLicense();
 }
 
-async function checkWebLicense() {
+async function checkWebLicense(silent = false) {
   try {
     licenseState.checking = true;
-    setAppEnabled(false);
-    showLicenseOverlay("checking");
+    if (!silent) {
+      setAppEnabled(false);
+      showLicenseOverlay("checking");
+    }
 
     const identity = await getWebIdentity();
     licenseState.deviceHash = identity.deviceHash;
@@ -710,24 +727,35 @@ async function checkWebLicense() {
     }
 
     licenseState.allowed = result.allowed === true;
+    licenseState.status = result.status || "";
+    licenseState.lastCheckedAt = Date.now();
     licenseState.checking = false;
 
     if (licenseState.allowed) {
       setAppEnabled(true);
       hideLicenseOverlay();
       if (!currentKmlText) {
-        setDetails(`${result.message || "Lisans aktif."}\n\nBir KML veya KMZ dosyasi acin.`);
+        setDetails(`${formatLicenseStatus(result)}\n\nBir KML veya KMZ dosyasi acin.`);
       }
       return;
     }
 
+    setAppEnabled(false);
     showLicenseOverlay("purchase", result.message || "Deneme veya lisans suresi sona erdi.");
   } catch (error) {
     console.error(error);
     licenseState.allowed = false;
     licenseState.checking = false;
+    setAppEnabled(false);
     showLicenseOverlay("error", error.message || "Lisans kontrolu yapilamadi.");
   }
+}
+
+function formatLicenseStatus(result) {
+  if (result?.status === "licensed") {
+    return `Premium lisans aktif. Kalan gun: ${result.remainingDays ?? "-"}`;
+  }
+  return result?.message || "Lisans aktif.";
 }
 
 async function callLicenseService(extraPayload) {
@@ -976,10 +1004,15 @@ async function signInOrCreateAccount(email, password) {
   }
 
   const signup = await supabaseClient.auth.signUp({ email, password });
-  if (signup.error) throw signup.error;
+  if (signup.error) {
+    if (isAlreadyRegistered(signup.error)) {
+      throw new Error("Bu e-posta zaten kayitli. Lutfen bu hesabin mevcut sifresiyle giris yapin.");
+    }
+    throw signup.error;
+  }
   licenseState.session = signup.data?.session || null;
   if (!licenseState.session) {
-    throw new Error("Hesap olusturuldu ama oturum acilmadi. Supabase Auth ayarlarinda e-posta onayi kapali olmali.");
+    throw new Error("Hesap olusturuldu ancak giris acilamadi. E-posta onayi kapatildiktan sonra ayni bilgilerle tekrar giris yapin.");
   }
 }
 
@@ -996,17 +1029,33 @@ function isMissingAccount(error) {
     message.includes("email not confirmed");
 }
 
+function isAlreadyRegistered(error) {
+  const message = [
+    error?.message,
+    error?.code,
+    error?.status,
+    error?.name
+  ].map((item) => String(item || "").toLowerCase()).join(" ");
+  return message.includes("already registered") ||
+    message.includes("already exists") ||
+    message.includes("user already") ||
+    message.includes("email already");
+}
+
 function getLicenseErrorMessage(error) {
   if (isEmailRateLimit(error)) {
     return "Cok fazla giris e-postasi istendi. Lutfen biraz bekleyip tekrar deneyin.";
   }
   const message = String(error?.message || error?.error_description || error?.msg || "").trim();
   const lower = message.toLowerCase();
+  if (lower.includes("already registered") || lower.includes("already exists") || lower.includes("user already") || lower.includes("email already")) {
+    return "Bu e-posta zaten kayitli. Lutfen bu hesabin mevcut sifresiyle giris yapin.";
+  }
   if (lower.includes("invalid login") || lower.includes("invalid credentials")) {
     return "E-posta veya sifre hatali. Hesabiniz yoksa ayni e-posta ile yeni sifre belirleyip tekrar deneyin.";
   }
   if (lower.includes("email not confirmed") || lower.includes("confirm")) {
-    return "Bu e-posta icin onay gerekiyor. Supabase Auth ayarlarinda e-posta onayini kapatin veya onay mailini tamamlayin.";
+    return "Bu e-posta icin onay gerekiyor. E-posta onayi kapatildiktan sonra ayni bilgilerle tekrar giris yapin.";
   }
   if (message && !["()", "[]", "{}", "null", "undefined"].includes(message)) return message;
   return "Islem tamamlanamadi. Lutfen bilgileri kontrol edip tekrar deneyin.";
