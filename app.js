@@ -11,10 +11,10 @@ const LICENSE_CONFIG = {
 };
 
 const LICENSE_TERMS = [
-  "SC23 Harita Earth Web, KML ve KMZ dosyalarini uydu haritasi uzerinde goruntulemek icin lisansli olarak sunulur.",
-  "Yazilimin telif haklari SC23 Harita'ya aittir. Izinsiz cogaltma, dagitma veya tersine muhendislik yapilamaz.",
-  "Deneme suresi ilk web lisans kaydindan itibaren 30 gundur. Sure bitince dosya acma, haritada goruntuleme ve kaydetme ozellikleri kapatilir.",
-  "Lisans kontrolu icin oturum bilgisi, cihaz tanimlayici, tarayici bilgisi, IP ve konum bilgisi gibi teknik kayitlar saklanabilir."
+  "SC23 Harita Earth Web, KML ve KMZ dosyalarını uydu haritası üzerinde görüntülemek için lisanslı olarak sunulur.",
+  "Yazılımın telif hakları SC23 Harita'ya aittir. İzinsiz çoğaltma, dağıtma veya tersine mühendislik yapılamaz.",
+  "Deneme süresi ilk web lisans kaydından itibaren 30 gündür. Süre bitince dosya açma, haritada görüntüleme ve kaydetme özellikleri kapatılır.",
+  "Lisans kontrolü için oturum bilgisi, cihaz tanımlayıcı, tarayıcı bilgisi, IP ve konum bilgisi gibi teknik kayıtlar saklanabilir."
 ].join("\n\n");
 
 const licenseState = {
@@ -220,7 +220,7 @@ async function openFile(file) {
     saveKmlButton.disabled = false;
   } catch (error) {
     console.error(error);
-    setDetails(`Dosya acilamadi.\n${error.message || error}`);
+    setDetails(`Dosya açılamadı.\n${error.message || error}`);
   }
 }
 
@@ -678,7 +678,7 @@ async function initLicense() {
 
   if (!supabaseClient) {
     licenseState.checking = false;
-    showLicenseOverlay("error", "Lisans sistemi yuklenemedi. Sayfayi yenileyin.");
+    showLicenseOverlay("error", "Lisans sistemi yüklenemedi. Sayfayı yenileyin.");
     return;
   }
 
@@ -754,26 +754,26 @@ async function checkWebLicense(silent = false) {
       showLicenseOverlay("requested");
       return;
     }
-    showLicenseOverlay("purchase", result.message || "Deneme veya lisans suresi sona erdi.");
+    showLicenseOverlay("purchase", result.message || "Deneme veya lisans süresi sona erdi.");
   } catch (error) {
     console.error(error);
     licenseState.allowed = false;
     licenseState.checking = false;
     setAppEnabled(false);
-    showLicenseOverlay("error", error.message || "Lisans kontrolu yapilamadi.");
+    showLicenseOverlay("error", error.message || "Lisans kontrolü yapılamadı.");
   }
 }
 
 function formatLicenseStatus(result) {
   if (result?.status === "licensed") {
-    return `Premium lisans aktif. Kalan gun: ${result.remainingDays ?? "-"}`;
+    return `Premium lisans aktif. Kalan gün: ${result.remainingDays ?? "-"}`;
   }
   return result?.message || "Lisans aktif.";
 }
 
 async function callLicenseService(extraPayload) {
   const session = licenseState.session;
-  if (!session?.access_token) throw new Error("Lisans kontrolu icin giris yapin.");
+  if (!session?.access_token) throw new Error("Lisans kontrolü için giriş yapın.");
 
   const payload = {
     product: LICENSE_CONFIG.product,
@@ -832,7 +832,7 @@ async function getWebIdentity() {
 }
 
 function getWebComputerName() {
-  const email = licenseState.session?.user?.email || "Web kullanici";
+  const email = licenseState.session?.user?.email || "Web kullanıcı";
   const browser = detectBrowserName();
   return `${browser} - ${email}`.slice(0, 128);
 }
@@ -900,18 +900,18 @@ function showLicenseOverlay(mode, message = "") {
       <form class="license-card" data-license-form="login">
         ${closeButtonHtml()}
         <h2>SC23 Harita Earth Web</h2>
-        <p>Devam etmek icin e-posta ve sifre ile giris yapin. Hesap yoksa ayni bilgilerle otomatik olusturulur.</p>
+        <p>Devam etmek için e-posta ve şifre ile giriş yapın. Hesap yoksa aynı bilgilerle otomatik oluşturulur.</p>
         <label>
           <span>E-posta</span>
           <input name="email" type="email" autocomplete="email" required placeholder="ornek@mail.com">
         </label>
         <label>
-          <span>Sifre</span>
+          <span>Şifre</span>
           <input name="password" type="password" autocomplete="current-password" minlength="6" required placeholder="En az 6 karakter">
         </label>
         <div class="license-terms">${escapeHtml(LICENSE_TERMS)}</div>
-        <button class="button secondary wide" type="submit">Giris Yap / Hesap Olustur</button>
-        <p class="license-note">Devam ederek lisans ve kullanim kosullarini kabul etmis olursunuz.</p>
+        <button class="button secondary wide" type="submit">Giriş Yap / Hesap Oluştur</button>
+        <p class="license-note">Devam ederek lisans ve kullanım koşullarını kabul etmiş olursunuz.</p>
       </form>
     `;
     return;
@@ -922,8 +922,8 @@ function showLicenseOverlay(mode, message = "") {
     overlay.innerHTML = `
       <form class="license-card" data-license-form="purchase">
         ${closeButtonHtml()}
-        <h2>Deneme Suresi Sona Erdi</h2>
-        <p>${escapeHtml(message || "Deneme veya lisans suresi sona erdi.")}</p>
+        <h2>Deneme Süresi Sona Erdi</h2>
+        <p>${escapeHtml(message || "Deneme veya lisans süresi sona erdi.")}</p>
         <p class="machine-code">Makine kodu: ${escapeHtml((licenseState.deviceHash || "").slice(0, 16).toUpperCase() || "-")}</p>
         <label>
           <span>Ad Soyad</span>
@@ -934,10 +934,10 @@ function showLicenseOverlay(mode, message = "") {
           <input name="email" type="email" autocomplete="email" required value="${escapeHtml(email)}">
         </label>
         <div class="plan-row">
-          <label><input type="radio" name="plan" value="monthly" checked> Aylik Lisans</label>
-          <label><input type="radio" name="plan" value="yearly"> Yillik Lisans</label>
+          <label><input type="radio" name="plan" value="monthly" checked> Aylık Lisans</label>
+          <label><input type="radio" name="plan" value="yearly"> Yıllık Lisans</label>
         </div>
-        <button class="button secondary wide" type="submit">Satin Alma Talebi Gonder</button>
+        <button class="button secondary wide" type="submit">Satın Alma Talebi Gönder</button>
       </form>
     `;
     return;
@@ -947,9 +947,9 @@ function showLicenseOverlay(mode, message = "") {
     overlay.innerHTML = `
       <section class="license-card compact">
         ${closeButtonHtml()}
-        <h2>Talebiniz Gonderildi</h2>
-        <p>Satin alma talebiniz alindi. Lisans aktiflestirilene kadar dosya acma, haritada goruntuleme ve kaydetme ozellikleri kapali kalir.</p>
-        <p class="license-note">Lisans verildikten sonra sayfayi yenileyerek kullanabilirsiniz.</p>
+        <h2>Talebiniz Gönderildi</h2>
+        <p>Satın alma talebiniz alındı. Lisans aktifleştirilene kadar dosya açma, haritada görüntüleme ve kaydetme özellikleri kapalı kalır.</p>
+        <p class="license-note">Lisans verildikten sonra sayfayı yenileyerek kullanabilirsiniz.</p>
       </section>
     `;
     return;
@@ -958,8 +958,8 @@ function showLicenseOverlay(mode, message = "") {
   overlay.innerHTML = `
     <section class="license-card">
       ${closeButtonHtml()}
-      <h2>Lisans Kontrolu Yapilamadi</h2>
-      <p>${escapeHtml(message || "Beklenmeyen bir hata olustu.")}</p>
+      <h2>Lisans Kontrolü Yapılamadı</h2>
+      <p>${escapeHtml(message || "Beklenmeyen bir hata oluştu.")}</p>
       <button class="button secondary wide" type="button" onclick="location.reload()">Tekrar Dene</button>
     </section>
   `;
@@ -987,8 +987,8 @@ async function onLicenseSubmit(event) {
       const password = form.elements.password.value;
       await signInOrCreateAccount(email, password);
       form.innerHTML = `
-        <h2>Giris Basarili</h2>
-        <p>Lisans kontrol ediliyor. Birazdan harita acilacak.</p>
+        <h2>Giriş Başarılı</h2>
+        <p>Lisans kontrol ediliyor. Birazdan harita açılacak.</p>
       `;
       await checkWebLicense();
       return;
@@ -1009,8 +1009,8 @@ async function onLicenseSubmit(event) {
       localStorage.setItem(getPurchaseRequestKey(), "1");
       setAppEnabled(false);
       showLicenseOverlay("requested");
-      fileName.textContent = "Satin alma talebi gonderildi";
-      setDetails("Satin alma talebiniz gonderildi. Lisans aktiflestirilince sayfayi yenileyip kullanabilirsiniz.");
+      fileName.textContent = "Satın alma talebi gönderildi";
+      setDetails("Satın alma talebiniz gönderildi. Lisans aktifleştirilince sayfayı yenileyip kullanabilirsiniz.");
     }
   } catch (error) {
     console.error(error);
@@ -1032,7 +1032,7 @@ async function signInOrCreateAccount(email, password) {
   const login = await supabaseClient.auth.signInWithPassword({ email, password });
   if (!login.error) {
     licenseState.session = login.data?.session || null;
-    if (!licenseState.session) throw new Error("Oturum acilamadi. Lutfen tekrar deneyin.");
+    if (!licenseState.session) throw new Error("Oturum açılamadı. Lütfen tekrar deneyin.");
     return;
   }
 
@@ -1043,13 +1043,13 @@ async function signInOrCreateAccount(email, password) {
   const signup = await supabaseClient.auth.signUp({ email, password });
   if (signup.error) {
     if (isAlreadyRegistered(signup.error)) {
-      throw new Error("Bu e-posta zaten kayitli. Lutfen bu hesabin mevcut sifresiyle giris yapin.");
+      throw new Error("Bu e-posta zaten kayıtlı. Lütfen bu hesabın mevcut şifresiyle giriş yapın.");
     }
     throw signup.error;
   }
   licenseState.session = signup.data?.session || null;
   if (!licenseState.session) {
-    throw new Error("Hesap olusturuldu ancak giris acilamadi. E-posta onayi kapatildiktan sonra ayni bilgilerle tekrar giris yapin.");
+    throw new Error("Hesap oluşturuldu ancak giriş açılamadı. E-posta onayı kapatıldıktan sonra aynı bilgilerle tekrar giriş yapın.");
   }
 }
 
@@ -1081,21 +1081,21 @@ function isAlreadyRegistered(error) {
 
 function getLicenseErrorMessage(error) {
   if (isEmailRateLimit(error)) {
-    return "Cok fazla giris e-postasi istendi. Lutfen biraz bekleyip tekrar deneyin.";
+    return "Çok fazla giriş e-postası istendi. Lütfen biraz bekleyip tekrar deneyin.";
   }
   const message = String(error?.message || error?.error_description || error?.msg || "").trim();
   const lower = message.toLowerCase();
   if (lower.includes("already registered") || lower.includes("already exists") || lower.includes("user already") || lower.includes("email already")) {
-    return "Bu e-posta zaten kayitli. Lutfen bu hesabin mevcut sifresiyle giris yapin.";
+    return "Bu e-posta zaten kayıtlı. Lütfen bu hesabın mevcut şifresiyle giriş yapın.";
   }
   if (lower.includes("invalid login") || lower.includes("invalid credentials")) {
-    return "E-posta veya sifre hatali. Hesabiniz yoksa ayni e-posta ile yeni sifre belirleyip tekrar deneyin.";
+    return "E-posta veya şifre hatalı. Hesabınız yoksa aynı e-posta ile yeni şifre belirleyip tekrar deneyin.";
   }
   if (lower.includes("email not confirmed") || lower.includes("confirm")) {
-    return "Bu e-posta icin onay gerekiyor. E-posta onayi kapatildiktan sonra ayni bilgilerle tekrar giris yapin.";
+    return "Bu e-posta için onay gerekiyor. E-posta onayı kapatıldıktan sonra aynı bilgilerle tekrar giriş yapın.";
   }
   if (message && !["()", "[]", "{}", "null", "undefined"].includes(message)) return message;
-  return "Islem tamamlanamadi. Lutfen bilgileri kontrol edip tekrar deneyin.";
+  return "İşlem tamamlanamadı. Lütfen bilgileri kontrol edip tekrar deneyin.";
 }
 
 function isEmailRateLimit(error) {
