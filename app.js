@@ -43,6 +43,16 @@ const esriImagery = L.tileLayer(
   }
 ).addTo(map);
 
+const esriLabels = L.tileLayer(
+  "https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}",
+  {
+    maxNativeZoom: 18,
+    maxZoom: 21,
+    opacity: 0.72,
+    attribution: "Labels &copy; Esri"
+  }
+).addTo(map);
+
 const osm = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
   maxNativeZoom: 19,
   maxZoom: 22,
@@ -75,7 +85,9 @@ L.control.layers(
     "Acik Harita": cartoLight,
     "Koyu Harita": cartoDark
   },
-  {},
+  {
+    "Uydu Etiketleri": esriLabels
+  },
   { position: "bottomright" }
 ).addTo(map);
 
