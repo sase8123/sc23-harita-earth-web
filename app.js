@@ -2,6 +2,7 @@ const LICENSE_CONFIG = {
   supabaseUrl: "https://qlxrykywoiutncwfehvl.supabase.co",
   publishableKey: "sb_publishable_fCUx7PUID8qh6K1ADA_cbg_cF83SHjC",
   functionName: "hyper-service",
+  webUrl: "https://earth.sc23harita.com/",
   product: "SC23_HARITA_EARTH",
   platform: "web",
   clientKind: "browser",
@@ -922,7 +923,7 @@ async function onLicenseSubmit(event) {
       const email = form.elements.email.value.trim();
       const { error } = await supabaseClient.auth.signInWithOtp({
         email,
-        options: { emailRedirectTo: `${location.origin}${location.pathname}` }
+        options: { emailRedirectTo: LICENSE_CONFIG.webUrl }
       });
       if (error) throw error;
       form.innerHTML = `
