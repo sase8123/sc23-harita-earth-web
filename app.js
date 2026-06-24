@@ -77,7 +77,7 @@ const cartoDark = L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x
   attribution: "&copy; OpenStreetMap &copy; CARTO"
 });
 
-L.control.layers(
+const layerControl = L.control.layers(
   {
     "Uydu": esriImagery,
     "OpenStreetMap": osm,
@@ -90,6 +90,24 @@ L.control.layers(
   },
   { position: "bottomright" }
 ).addTo(map);
+makeLayerControlClickOnly(layerControl);
+
+function makeLayerControlClickOnly(control) {
+  const container = control.getContainer();
+  const toggle = container?.querySelector(".leaflet-control-layers-toggle");
+  if (!container || !toggle || !control._expand || !control._collapse) return;
+
+  L.DomEvent.off(container, "mouseenter", control._expand, control);
+  L.DomEvent.off(container, "mouseleave", control._collapse, control);
+  L.DomEvent.on(toggle, "click", (event) => {
+    L.DomEvent.stop(event);
+    if (L.DomUtil.hasClass(container, "leaflet-control-layers-expanded")) {
+      control.collapse();
+      return;
+    }
+    control.expand();
+  });
+}
 
 map.on("mousemove", (event) => {
   if (usesCenterTarget()) return;
