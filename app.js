@@ -1001,7 +1001,14 @@ function getLicenseErrorMessage(error) {
     return "Cok fazla giris e-postasi istendi. Lutfen biraz bekleyip tekrar deneyin.";
   }
   const message = String(error?.message || error?.error_description || error?.msg || "").trim();
-  if (message && message !== "()" && message !== "[]") return message;
+  const lower = message.toLowerCase();
+  if (lower.includes("invalid login") || lower.includes("invalid credentials")) {
+    return "E-posta veya sifre hatali. Hesabiniz yoksa ayni e-posta ile yeni sifre belirleyip tekrar deneyin.";
+  }
+  if (lower.includes("email not confirmed") || lower.includes("confirm")) {
+    return "Bu e-posta icin onay gerekiyor. Supabase Auth ayarlarinda e-posta onayini kapatin veya onay mailini tamamlayin.";
+  }
+  if (message && !["()", "[]", "{}", "null", "undefined"].includes(message)) return message;
   return "Islem tamamlanamadi. Lutfen bilgileri kontrol edip tekrar deneyin.";
 }
 
