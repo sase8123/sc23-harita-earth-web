@@ -965,7 +965,7 @@ async function onLicenseSubmit(event) {
 
 function getLicenseErrorMessage(error) {
   if (isEmailRateLimit(error)) {
-    return "Cok fazla giris e-postasi istendi. Lutfen 1-2 dakika bekleyip tekrar deneyin. Kalici cozum icin Supabase SMTP ayari yapilmalidir.";
+    return "Cok fazla giris e-postasi istendi. Lutfen biraz bekleyip tekrar deneyin.";
   }
   return error.message || "Islem tamamlanamadi.";
 }
