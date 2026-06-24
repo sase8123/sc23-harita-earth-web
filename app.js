@@ -49,8 +49,32 @@ const osm = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
   attribution: "&copy; OpenStreetMap"
 });
 
+const openTopo = L.tileLayer("https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png", {
+  maxNativeZoom: 17,
+  maxZoom: 21,
+  attribution: "Map data &copy; OpenStreetMap, SRTM | Style &copy; OpenTopoMap"
+});
+
+const cartoLight = L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
+  maxNativeZoom: 20,
+  maxZoom: 22,
+  attribution: "&copy; OpenStreetMap &copy; CARTO"
+});
+
+const cartoDark = L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+  maxNativeZoom: 20,
+  maxZoom: 22,
+  attribution: "&copy; OpenStreetMap &copy; CARTO"
+});
+
 L.control.layers(
-  { "Uydu": esriImagery, "OpenStreetMap": osm },
+  {
+    "Uydu": esriImagery,
+    "OpenStreetMap": osm,
+    "Topo Harita": openTopo,
+    "Acik Harita": cartoLight,
+    "Koyu Harita": cartoDark
+  },
   {},
   { position: "bottomright" }
 ).addTo(map);
