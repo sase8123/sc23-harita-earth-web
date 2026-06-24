@@ -780,11 +780,7 @@ async function getWebIdentity() {
 
   const deviceBasis = [
     "SC23 Harita Earth Web",
-    user.id,
-    navigator.platform || "",
-    Intl.DateTimeFormat().resolvedOptions().timeZone || "",
-    `${screen.width}x${screen.height}`,
-    navigator.hardwareConcurrency || ""
+    user.id
   ].join("|");
   const deviceHash = await sha256Text(deviceBasis);
   return {
@@ -857,14 +853,18 @@ function showLicenseOverlay(mode, message = "") {
     overlay.innerHTML = `
       <form class="license-card" data-license-form="login">
         <h2>SC23 Harita Earth Web</h2>
-        <p>Devam etmek icin tek seferlik e-posta girisi yapin. Oturum bu tarayicida saklanir, her acilista tekrar sorulmaz.</p>
+        <p>Devam etmek icin e-posta ve sifre ile giris yapin. Hesap yoksa ayni bilgilerle otomatik olusturulur.</p>
         <label>
           <span>E-posta</span>
           <input name="email" type="email" autocomplete="email" required placeholder="ornek@mail.com">
         </label>
+        <label>
+          <span>Sifre</span>
+          <input name="password" type="password" autocomplete="current-password" minlength="6" required placeholder="En az 6 karakter">
+        </label>
         <div class="license-terms">${escapeHtml(LICENSE_TERMS)}</div>
-        <button class="button secondary wide" type="submit">Giris Linki Gonder</button>
-        <p class="license-note">Giris linki gondererek lisans ve kullanim kosullarini kabul etmis olursunuz.</p>
+        <button class="button secondary wide" type="submit">Giris Yap / Hesap Olustur</button>
+        <p class="license-note">Devam ederek lisans ve kullanim kosullarini kabul etmis olursunuz.</p>
       </form>
     `;
     return;
@@ -916,20 +916,20 @@ async function onLicenseSubmit(event) {
 
   const mode = form.dataset.licenseForm;
   const button = form.querySelector("button[type='submit']");
+  let keepButtonDisabled = false;
   if (button) button.disabled = true;
+  form.querySelectorAll(".license-error").forEach((item) => item.remove());
 
   try {
     if (mode === "login") {
       const email = form.elements.email.value.trim();
-      const { error } = await supabaseClient.auth.signInWithOtp({
-        email,
-        options: { emailRedirectTo: LICENSE_CONFIG.webUrl }
-      });
-      if (error) throw error;
+      const password = form.elements.password.value;
+      await signInOrCreateAccount(email, password);
       form.innerHTML = `
-        <h2>Giris Linki Gonderildi</h2>
-        <p>E-postanizi kontrol edin. Linke tiklayinca SC23 Harita Earth Web otomatik acilacak ve lisans kaydi yapilacak.</p>
+        <h2>Giris Basarili</h2>
+        <p>Lisans kontrol ediliyor. Birazdan harita acilacak.</p>
       `;
+      await checkWebLicense();
       return;
     }
 
@@ -955,24 +955,69 @@ async function onLicenseSubmit(event) {
     note.textContent = friendlyMessage;
     form.appendChild(note);
     if (mode === "login" && isEmailRateLimit(error)) {
+      keepButtonDisabled = true;
       startLoginCooldown(button, 90);
-      return;
     }
   } finally {
-    if (button) button.disabled = false;
+    if (button && !keepButtonDisabled) button.disabled = false;
   }
+}
+
+async function signInOrCreateAccount(email, password) {
+  const login = await supabaseClient.auth.signInWithPassword({ email, password });
+  if (!login.error) {
+    licenseState.session = login.data?.session || null;
+    if (!licenseState.session) throw new Error("Oturum acilamadi. Lutfen tekrar deneyin.");
+    return;
+  }
+
+  if (!isMissingAccount(login.error)) {
+    throw login.error;
+  }
+
+  const signup = await supabaseClient.auth.signUp({ email, password });
+  if (signup.error) throw signup.error;
+  licenseState.session = signup.data?.session || null;
+  if (!licenseState.session) {
+    throw new Error("Hesap olusturuldu ama oturum acilmadi. Supabase Auth ayarlarinda e-posta onayi kapali olmali.");
+  }
+}
+
+function isMissingAccount(error) {
+  const message = [
+    error?.message,
+    error?.code,
+    error?.status,
+    error?.name
+  ].map((item) => String(item || "").toLowerCase()).join(" ");
+  return message.includes("invalid login") ||
+    message.includes("invalid credentials") ||
+    message.includes("400") ||
+    message.includes("email not confirmed");
 }
 
 function getLicenseErrorMessage(error) {
   if (isEmailRateLimit(error)) {
     return "Cok fazla giris e-postasi istendi. Lutfen biraz bekleyip tekrar deneyin.";
   }
-  return error.message || "Islem tamamlanamadi.";
+  const message = String(error?.message || error?.error_description || error?.msg || "").trim();
+  if (message && message !== "()" && message !== "[]") return message;
+  return "Islem tamamlanamadi. Lutfen bilgileri kontrol edip tekrar deneyin.";
 }
 
 function isEmailRateLimit(error) {
-  const message = String(error?.message || "").toLowerCase();
-  return message.includes("rate limit") || message.includes("too many") || message.includes("email rate");
+  const message = [
+    error?.message,
+    error?.error_description,
+    error?.code,
+    error?.status,
+    error?.name
+  ].map((item) => String(item || "").toLowerCase()).join(" ");
+  return message.includes("429") ||
+    message.includes("rate limit") ||
+    message.includes("too many") ||
+    message.includes("email rate") ||
+    message.includes("over_email_send_rate_limit");
 }
 
 function startLoginCooldown(button, seconds) {
