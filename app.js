@@ -723,6 +723,8 @@ async function checkWebLicense(silent = false) {
     });
 
     if (!result.allowed && result.status === "unauthorized") {
+      localStorage.removeItem(identity.secretKey);
+      licenseState.deviceSecret = "";
       result = await callLicenseService({
         action: "register",
         deviceHash: identity.deviceHash,
@@ -807,6 +809,7 @@ async function callLicenseService(extraPayload) {
 
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
+    if (data && data.allowed === false && data.status) return data;
     throw new Error(data.message || "Lisans servisi cevap vermedi.");
   }
   return data;
