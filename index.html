@@ -12,7 +12,7 @@
   <link rel="preconnect" href="https://unpkg.com">
   <link rel="preconnect" href="https://server.arcgisonline.com">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-  <link rel="stylesheet" href="styles.css?v=17">
+  <link rel="stylesheet" href="styles.css?v=18">
 </head>
 <body>
   <main class="app-shell">
@@ -23,7 +23,6 @@
         </div>
         <div>
           <h1>SC23 Harita Earth</h1>
-          <button id="logoutButton" class="session-button" type="button" hidden>Çıkış Yap</button>
         </div>
       </div>
       <div class="actions">
@@ -32,6 +31,7 @@
           <input id="fileInput" type="file" accept=".kml,.kmz" hidden>
         </label>
         <button id="saveKml" class="button secondary" type="button" disabled>KML Kaydet</button>
+        <button id="logoutButton" class="button ghost logout-button" type="button" hidden>Çıkış Yap</button>
         <button id="clearMap" class="button ghost" type="button">Temizle</button>
       </div>
     </header>
@@ -89,6 +89,6 @@
   <script src="https://unpkg.com/jszip@3.10.1/dist/jszip.min.js"></script>
   <script src="https://unpkg.com/@tmcw/togeojson@5.8.1/dist/togeojson.umd.js"></script>
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-  <script src="app.js?v=17"></script>
+  <script src="app.js?v=18"></script>
 </body>
 </html>
