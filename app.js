@@ -24,6 +24,7 @@ const licenseState = {
   deviceSecret: "",
   session: null,
   status: "",
+  purchaseRequested: false,
   lastCheckedAt: 0
 };
 
@@ -656,6 +657,10 @@ function ensureLicenseAllowed() {
     showLicenseOverlay("checking");
     return false;
   }
+  if (licenseState.purchaseRequested) {
+    showLicenseOverlay("requested");
+    return false;
+  }
   showLicenseOverlay("purchase");
   return false;
 }
@@ -728,10 +733,14 @@ async function checkWebLicense(silent = false) {
 
     licenseState.allowed = result.allowed === true;
     licenseState.status = result.status || "";
+    licenseState.purchaseRequested = result.purchaseRequested === true ||
+      localStorage.getItem(getPurchaseRequestKey()) === "1";
     licenseState.lastCheckedAt = Date.now();
     licenseState.checking = false;
 
     if (licenseState.allowed) {
+      localStorage.removeItem(getPurchaseRequestKey());
+      licenseState.purchaseRequested = false;
       setAppEnabled(true);
       hideLicenseOverlay();
       if (!currentKmlText) {
@@ -741,6 +750,10 @@ async function checkWebLicense(silent = false) {
     }
 
     setAppEnabled(false);
+    if (licenseState.purchaseRequested) {
+      showLicenseOverlay("requested");
+      return;
+    }
     showLicenseOverlay("purchase", result.message || "Deneme veya lisans suresi sona erdi.");
   } catch (error) {
     console.error(error);
@@ -863,6 +876,10 @@ function getLicenseOverlay() {
   return overlay;
 }
 
+function closeButtonHtml() {
+  return `<button class="license-close" type="button" data-license-close="1" aria-label="Kapat">&times;</button>`;
+}
+
 function showLicenseOverlay(mode, message = "") {
   const overlay = getLicenseOverlay();
   overlay.hidden = false;
@@ -870,8 +887,9 @@ function showLicenseOverlay(mode, message = "") {
   if (mode === "checking") {
     overlay.innerHTML = `
       <section class="license-card compact">
+        ${closeButtonHtml()}
         <h2>Lisans kontrol ediliyor</h2>
-        <p>SC23 Harita Earth Web hesabi ve 30 gunluk deneme durumu kontrol ediliyor.</p>
+        <p>SC23 Harita Earth Web lisans durumu kontrol ediliyor.</p>
       </section>
     `;
     return;
@@ -880,6 +898,7 @@ function showLicenseOverlay(mode, message = "") {
   if (mode === "login") {
     overlay.innerHTML = `
       <form class="license-card" data-license-form="login">
+        ${closeButtonHtml()}
         <h2>SC23 Harita Earth Web</h2>
         <p>Devam etmek icin e-posta ve sifre ile giris yapin. Hesap yoksa ayni bilgilerle otomatik olusturulur.</p>
         <label>
@@ -902,6 +921,7 @@ function showLicenseOverlay(mode, message = "") {
     const email = licenseState.session?.user?.email || "";
     overlay.innerHTML = `
       <form class="license-card" data-license-form="purchase">
+        ${closeButtonHtml()}
         <h2>Deneme Suresi Sona Erdi</h2>
         <p>${escapeHtml(message || "Deneme veya lisans suresi sona erdi.")}</p>
         <p class="machine-code">Makine kodu: ${escapeHtml((licenseState.deviceHash || "").slice(0, 16).toUpperCase() || "-")}</p>
@@ -923,8 +943,21 @@ function showLicenseOverlay(mode, message = "") {
     return;
   }
 
+  if (mode === "requested") {
+    overlay.innerHTML = `
+      <section class="license-card compact">
+        ${closeButtonHtml()}
+        <h2>Talebiniz Gonderildi</h2>
+        <p>Satin alma talebiniz alindi. Lisans aktiflestirilene kadar dosya acma, haritada goruntuleme ve kaydetme ozellikleri kapali kalir.</p>
+        <p class="license-note">Lisans verildikten sonra sayfayi yenileyerek kullanabilirsiniz.</p>
+      </section>
+    `;
+    return;
+  }
+
   overlay.innerHTML = `
     <section class="license-card">
+      ${closeButtonHtml()}
       <h2>Lisans Kontrolu Yapilamadi</h2>
       <p>${escapeHtml(message || "Beklenmeyen bir hata olustu.")}</p>
       <button class="button secondary wide" type="button" onclick="location.reload()">Tekrar Dene</button>
@@ -971,7 +1004,11 @@ async function onLicenseSubmit(event) {
         customerEmail: String(formData.get("email") || "").trim(),
         requestedPlan: formData.get("plan") === "monthly" ? "monthly" : "yearly"
       });
-      hideLicenseOverlay();
+      licenseState.allowed = false;
+      licenseState.purchaseRequested = true;
+      localStorage.setItem(getPurchaseRequestKey(), "1");
+      setAppEnabled(false);
+      showLicenseOverlay("requested");
       fileName.textContent = "Satin alma talebi gonderildi";
       setDetails("Satin alma talebiniz gonderildi. Lisans aktiflestirilince sayfayi yenileyip kullanabilirsiniz.");
     }
@@ -1074,6 +1111,11 @@ function isEmailRateLimit(error) {
     message.includes("too many") ||
     message.includes("email rate") ||
     message.includes("over_email_send_rate_limit");
+}
+
+function getPurchaseRequestKey() {
+  const email = licenseState.session?.user?.email || "anonymous";
+  return `sc23_purchase_requested_${LICENSE_CONFIG.product}_${email.toLowerCase()}`;
 }
 
 function startLoginCooldown(button, seconds) {

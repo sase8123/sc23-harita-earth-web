@@ -439,14 +439,37 @@ pre {
 }
 
 .license-card {
+  position: relative;
   width: min(560px, 100%);
   max-height: calc(100vh - 36px);
   overflow: auto;
-  padding: 28px;
+  padding: 34px 28px 28px;
   border: 1px solid rgba(246, 199, 68, 0.35);
   border-radius: 10px;
   background: linear-gradient(145deg, #06101a 0%, #0d2031 100%);
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.48);
+}
+
+.license-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  color: #d8e8f8;
+  cursor: pointer;
+  font-size: 24px;
+  line-height: 1;
+}
+
+.license-close:hover,
+.license-close:focus-visible {
+  background: rgba(246, 199, 68, 0.22);
+  color: var(--gold);
+  outline: none;
 }
 
 .license-card.compact {
