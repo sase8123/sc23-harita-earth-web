@@ -77,6 +77,26 @@ h1 {
   letter-spacing: 0;
 }
 
+.session-button {
+  margin-top: 8px;
+  padding: 4px 11px;
+  border: 1px solid rgba(184, 208, 232, 0.35);
+  border-radius: 999px;
+  background: rgba(8, 21, 33, 0.82);
+  color: #d8e8f8;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.session-button:hover,
+.session-button:focus-visible {
+  border-color: rgba(246, 199, 68, 0.75);
+  color: var(--gold);
+  outline: none;
+}
+
 .brand p {
   margin: 8px 0 0;
   color: var(--muted);
@@ -641,6 +661,12 @@ pre {
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 6px;
     width: 100%;
+  }
+
+  .session-button {
+    margin-top: 5px;
+    padding: 3px 9px;
+    font-size: 11px;
   }
 
   .button {

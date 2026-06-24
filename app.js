@@ -43,6 +43,7 @@ const supabaseClient = window.supabase?.createClient(
 const fileInput = document.getElementById("fileInput");
 const saveKmlButton = document.getElementById("saveKml");
 const clearButton = document.getElementById("clearMap");
+const logoutButton = document.getElementById("logoutButton");
 const fileName = document.getElementById("fileName");
 const coordRows = document.getElementById("coordRows");
 const details = document.getElementById("details");
@@ -183,6 +184,7 @@ saveKmlButton.addEventListener("click", () => {
 });
 
 clearButton.addEventListener("click", resetMap);
+logoutButton?.addEventListener("click", signOutAndReset);
 
 ["dragenter", "dragover"].forEach((eventName) => {
   window.addEventListener(eventName, (event) => {
@@ -684,9 +686,11 @@ async function initLicense() {
 
   const { data } = await supabaseClient.auth.getSession();
   licenseState.session = data?.session || null;
+  updateLogoutButton();
 
   supabaseClient.auth.onAuthStateChange((_event, session) => {
     licenseState.session = session;
+    updateLogoutButton();
     if (session) checkWebLicense();
   });
 
@@ -871,7 +875,7 @@ function getLicenseOverlay() {
   document.body.appendChild(overlay);
   overlay.addEventListener("submit", onLicenseSubmit);
   overlay.addEventListener("click", (event) => {
-    if (event.target?.dataset?.licenseClose === "1") hideLicenseOverlay();
+    if (event.target?.dataset?.licenseClose === "1" && licenseState.allowed) hideLicenseOverlay();
   });
   return overlay;
 }
@@ -887,7 +891,6 @@ function showLicenseOverlay(mode, message = "") {
   if (mode === "checking") {
     overlay.innerHTML = `
       <section class="license-card compact">
-        ${closeButtonHtml()}
         <h2>Lisans kontrol ediliyor</h2>
         <p>SC23 Harita Earth Web lisans durumu kontrol ediliyor.</p>
       </section>
@@ -898,7 +901,6 @@ function showLicenseOverlay(mode, message = "") {
   if (mode === "login") {
     overlay.innerHTML = `
       <form class="license-card" data-license-form="login">
-        ${closeButtonHtml()}
         <h2>SC23 Harita Earth Web</h2>
         <p>Devam etmek için e-posta ve şifre ile giriş yapın. Hesap yoksa aynı bilgilerle otomatik oluşturulur.</p>
         <label>
@@ -921,7 +923,6 @@ function showLicenseOverlay(mode, message = "") {
     const email = licenseState.session?.user?.email || "";
     overlay.innerHTML = `
       <form class="license-card" data-license-form="purchase">
-        ${closeButtonHtml()}
         <h2>Deneme Süresi Sona Erdi</h2>
         <p>${escapeHtml(message || "Deneme veya lisans süresi sona erdi.")}</p>
         <p class="machine-code">Makine kodu: ${escapeHtml((licenseState.deviceHash || "").slice(0, 16).toUpperCase() || "-")}</p>
@@ -946,7 +947,6 @@ function showLicenseOverlay(mode, message = "") {
   if (mode === "requested") {
     overlay.innerHTML = `
       <section class="license-card compact">
-        ${closeButtonHtml()}
         <h2>Talebiniz Gönderildi</h2>
         <p>Satın alma talebiniz alındı. Lisans aktifleştirilene kadar dosya açma, haritada görüntüleme ve kaydetme özellikleri kapalı kalır.</p>
         <p class="license-note">Lisans verildikten sonra sayfayı yenileyerek kullanabilirsiniz.</p>
@@ -957,7 +957,6 @@ function showLicenseOverlay(mode, message = "") {
 
   overlay.innerHTML = `
     <section class="license-card">
-      ${closeButtonHtml()}
       <h2>Lisans Kontrolü Yapılamadı</h2>
       <p>${escapeHtml(message || "Beklenmeyen bir hata oluştu.")}</p>
       <button class="button secondary wide" type="button" onclick="location.reload()">Tekrar Dene</button>
@@ -986,6 +985,7 @@ async function onLicenseSubmit(event) {
       const email = form.elements.email.value.trim();
       const password = form.elements.password.value;
       await signInOrCreateAccount(email, password);
+      updateLogoutButton();
       form.innerHTML = `
         <h2>Giriş Başarılı</h2>
         <p>Lisans kontrol ediliyor. Birazdan harita açılacak.</p>
@@ -1096,6 +1096,43 @@ function getLicenseErrorMessage(error) {
   }
   if (message && !["()", "[]", "{}", "null", "undefined"].includes(message)) return message;
   return "İşlem tamamlanamadı. Lütfen bilgileri kontrol edip tekrar deneyin.";
+}
+
+async function signOutAndReset() {
+  try {
+    await supabaseClient?.auth.signOut();
+  } finally {
+    clearLocalLicenseState();
+    licenseState.allowed = false;
+    licenseState.checking = false;
+    licenseState.deviceHash = "";
+    licenseState.deviceSecret = "";
+    licenseState.session = null;
+    licenseState.status = "";
+    licenseState.purchaseRequested = false;
+    licenseState.lastCheckedAt = 0;
+    updateLogoutButton();
+    resetMap();
+    setAppEnabled(false);
+    showLicenseOverlay("login");
+  }
+}
+
+function clearLocalLicenseState() {
+  const prefixes = [
+    "sc23_web_device_secret_",
+    `sc23_purchase_requested_${LICENSE_CONFIG.product}_`
+  ];
+  for (let index = localStorage.length - 1; index >= 0; index -= 1) {
+    const key = localStorage.key(index);
+    if (key && prefixes.some((prefix) => key.startsWith(prefix))) {
+      localStorage.removeItem(key);
+    }
+  }
+}
+
+function updateLogoutButton() {
+  if (logoutButton) logoutButton.hidden = !licenseState.session;
 }
 
 function isEmailRateLimit(error) {
