@@ -949,13 +949,48 @@ async function onLicenseSubmit(event) {
     }
   } catch (error) {
     console.error(error);
+    const friendlyMessage = getLicenseErrorMessage(error);
     const note = document.createElement("p");
     note.className = "license-error";
-    note.textContent = error.message || "Islem tamamlanamadi.";
+    note.textContent = friendlyMessage;
     form.appendChild(note);
+    if (mode === "login" && isEmailRateLimit(error)) {
+      startLoginCooldown(button, 90);
+      return;
+    }
   } finally {
     if (button) button.disabled = false;
   }
+}
+
+function getLicenseErrorMessage(error) {
+  if (isEmailRateLimit(error)) {
+    return "Cok fazla giris e-postasi istendi. Lutfen 1-2 dakika bekleyip tekrar deneyin. Kalici cozum icin Supabase SMTP ayari yapilmalidir.";
+  }
+  return error.message || "Islem tamamlanamadi.";
+}
+
+function isEmailRateLimit(error) {
+  const message = String(error?.message || "").toLowerCase();
+  return message.includes("rate limit") || message.includes("too many") || message.includes("email rate");
+}
+
+function startLoginCooldown(button, seconds) {
+  if (!button) return;
+  let remaining = seconds;
+  button.disabled = true;
+  const originalText = button.textContent;
+  button.textContent = `Tekrar dene (${remaining})`;
+  const timer = setInterval(() => {
+    remaining -= 1;
+    if (remaining <= 0) {
+      clearInterval(timer);
+      button.disabled = false;
+      button.textContent = originalText;
+      return;
+    }
+    button.textContent = `Tekrar dene (${remaining})`;
+  }, 1000);
 }
 
 resetMap();
