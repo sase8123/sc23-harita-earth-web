@@ -776,6 +776,9 @@ async function checkWebLicense(silent = false) {
 
 function formatLicenseStatus(result) {
   if (result?.status === "licensed") {
+    if (result.isPerpetual === true || result.remainingDays === null) {
+      return "Premium lisans aktif. Süresiz lisans.";
+    }
     return `Premium lisans aktif. Kalan gün: ${result.remainingDays ?? "-"}`;
   }
   return result?.message || "Lisans aktif.";
